@@ -6,7 +6,7 @@
 #+SEQ_TODO: TODO READY DONE
 #+STARTUP: fninline overview
 
-* TODO Articles 
+* Articles
 ** TODO Wireless ARM cluster :raspberry:odroid:arm:cluster:docker:vagrant:ansible:
 *** Idea
 *** Hardware
@@ -17,20 +17,67 @@
 **** Prereqs
 **** Provisioning
 *** Running
-** TODO Automated ArchLinuxARM Install Guide :raspberry:odroid:arm:provisioning:docker:ansible:
+** DONE Automated ArchLinuxARM Install Guide :raspberry:odroid:arm:provisioning:docker:ansible:
+CLOSED: [2016-04-16 Sat 21:39] SCHEDULED: <2016-04-16 Sat>
+:PROPERTIES:
+:EXPORT_JEKYLL_LAYOUT: post
+:filename: 2016-03-25-automated-archlinuxarm-install-guide
+:banner_image: 
+:END:
 *TL;DR* Either grab my docker [[//hub.docker.com/peelsky/arm-sdcard-builder][image]] (recommended) or [[//github.com/peel/rpi-sdcard-builder][provision]] w/ vagrant
 
 While building a wireless Raspberry Pi / ODROID-C2 cluster to run Docker containers [fn:1] I got myself into an awkward, blind mexican standoff with OSX and EXT4.
 You know, the OSX stares at the EXT4, the EXT4 stares at the OSX, they both can't see nothing but it feels like things might get gory again.
 I mean, looking at all that mess it might end up with me running yet another development VM, doing stuff, possibly producing a bunch of bash scripts, flashing SD cards and wiping the whole story from my concious self. I'd much rather prefer having a reproducible, cross-system solution to check out and run every now and then when adding new nodes to cluster, wiping the old ones, clean-installing the distro.
-So here's how to conveniently get the precious ArchLinuxARM/Alpine/... =tar.gz=s onto those SD cards.
+So here's how to conveniently get the precious ArchLinuxARM/Alpine/... =tar.gz= onto those SD cards.
 *** Method 1: Vagrant
 The first thing I came up with was obviously running all the stuff in a VM. 
 For that Vagrant is an invaluable solution. The VM is provisioned with ansible. The
 The original goal was to simply put an SD card, and have it running my devices in a few minutes.
 As I had a few more SD cards to flash I needed a copy of the image file. So here it goes.
 **** HowTo
-<script src="https://gist.github.com/peel/1067f6545a322916af5f.js"></script>
+
+#+BEGIN_HTML
+<div class="container">
+#+END_HTML
+
+#+BEGIN_SRC bash
+#!/bin/bash
+
+# Step 0: Clone repository
+# The repository contains a VM to flash your SD card with
+git clone https://github.com/peel/rpi-sdcard-builder.git
+cd rpi-sdcard-builder/vagrant
+
+# Step 1: Find disk identifier
+# This is extremely important to get it right as the process will destroy
+# the contents of a given disk
+# The disk identifier has a form of 'diskX', ie for the following output:
+# /dev/disk2s1     233Gi  220Gi   12Gi    95% 57795408 3185810   95%   /
+# The disk identifier is disk2 (disk2s1 is a partition on disk2)
+df -h
+read -p "Enter disk identifier ie. disk2:" DISK_ID
+
+# Step 2: Provision VM
+# You will be asked for LOCAL (Macbook) sudo password
+# Remove --with-image if you don't want an .img file copy
+# The process might take quite some time complete depending on your network connection
+vagrant --disk-id=${DISK_ID} --with-image -- up
+
+# Step 3: Wait
+echo "It's ready now!"
+
+# Step 4: Destroy the VM
+vagrant destroy || true
+#+END_SRC
+
+#+BEGIN_HTML
+	<div class="reference">
+		<strong>Vagrantfile</strong>
+		<p>A script for running with Vagrant</p>
+	</div>
+</div>
+#+END_HTML
 **** Explained
 The first issue I stumbled upon was the way VirtualBox handles (or not handles) Macbook's SD card reader.
 In order to do so you need to create a rawdisk that mirrors a physical device. With VirtualBox this means issuing following command: =VBoxManage internalcommands createrawvmdk -filename sd_card.vmdk -rawdisk /dev/disk2=. This will create a vmdk image mirroring physical disk2. However to do so you need to unmount all the partitions from disk2 by running: =diskutil unmountDisk /dev/disk2= and setting looser permissions to disk2 with =sudo chmod 0777 /dev/disk2=. Then the =VBoxManage storageattach --storagectl SATAController --port 1 --device 0 --type hdd --medium sd_card.vmdk= command will mount the rawimage into the running VM. Oh, and the OSX will mount the disk automatically into your devices and locks VirtualBox from fiddling with disk geometry. So you'd need to unmount all the partitions again. Thankfully you can work with the =diskarbitrationd= daemon that monitors connected disks and automatically mounts them. However running =launchctl unload com.apple.diskarbitrationd= might not be the best idea as it results with a failure whenever trying to bring it back. However the service responds correctly to standard kill signals, so in order to stop it we'd send SIGSTOP signal and SIGCONT to continue. So after getting the service's PID with =sudo launchctl list | grep diskarbitrationd | awk '{print $1}'=, we'd issue kill ie. =sudo kill -SIGSTOP 71= and bring the service back with =sudo kill -SIGCONT 71=. And in between that we'd run provisioning of the VM. As you've most likely noticed in the previous section, 
@@ -41,9 +88,50 @@ Docker, no matter what you think about it, is primarily made for application con
 So it's better suited for exposing your applications rather than generating .img files, however, being able to do so and have the intermediary steps cached for future reference and simply download the container to generate the file is damn compelling. Which is probably why there are so many obvious misuses of Docker.
 Anyways, here's how to get it working.
 **** HowTo
-<script src="https://gist.github.com/peel/be19e1165a9856e2ce1f.js"></script>
+#+BEGIN_SRC bash
+#!/bin/bash
+
+# Step 0: Run the container
+# Downloads an image from docker hub and runs it with access to hardware in privileged mode
+docker run --rm --privileged -v $(pwd):/backup peelsky/arm-sdcard-builder -e download copy
+
+# Step 1: Find disk identifier
+# This is extremely important to get it right as the process will destroy
+# the contents of a given disk
+# The disk identifier has a form of 'diskX', ie for the following output:
+# /dev/disk2s1     233Gi  220Gi   12Gi    95% 57795408 3185810   95%   /
+# The disk identifier is disk2 (disk2s1 is a partition on disk2)
+df -h
+read -p "Enter disk identifier ie. disk2:" DISK_ID
+
+# Step 2: Flash SD card(s)
+# Copy image to SD card
+sudo dd bs=1m if=sdcard.img of=/dev/$(DISK_ID)
+#+END_SRC
+
 Or... if you'd like to use another tar archive ie. perform the procedure for ODROID-C2:
-<script src="https://gist.github.com/peel/fd0b424fdc0b99a07859.js"></script>
+
+#+BEGIN_SRC bash
+#!/bin/bash
+
+# Step 1: Run the container
+# Downloads an image from docker hub and runs it with access to hardware in privileged mode
+# Note the PLATFORM=oc2 variable
+docker run --rm --privileged -v $(pwd):/backup peelsky/arm-sdcard-builder -e PLATFORM=odroid-c2 download copy
+
+# Step 2: Find disk identifier
+# This is extremely important to get it right as the process will destroy
+# the contents of a given disk
+# The disk identifier has a form of 'diskX', ie for the following output:
+# /dev/disk2s1     233Gi  220Gi   12Gi    95% 57795408 3185810   95%   /
+# The disk identifier is disk2 (disk2s1 is a partition on disk2)
+df -h
+read -p "Enter disk identifier ie. disk2:" DISK_ID
+
+# Step 3: Flash SD card(s)
+# Copy image to SD card
+sudo dd bs=1m if=sdcard.img of=/dev/$(DISK_ID)
+#+END_SRC
 **** Explained
 That's all? Really? Well, yeah. The thing is the approach uses loop interfaces to create a 'virtual' disk device backed by an .img file that then gets shared with the local device. 
 Please remember that the container is ran through Docker Machine which in case of any issues is capable to run the container.
@@ -51,12 +139,163 @@ All that the container does is pretty much downloading a raw archlinux image, ne
 The Makefile itself is rather straight-forward it creates a backing img file with =dd if=/dev/zero of=sdcard.img bs=1M count=1850= and sets a loop device with =losetup ${ID} sdcard.img=, then partitions the image using =parted= into two partitions - boot for MBR and root with EXT4, untars onto the image and unmounts the image.
 *** Footnotes
 [fn:1] Invalid forward reference
-* TODO Talks
-** TODO Multi{ Platform, Paradigm} Programming :talks:elixir:scala:jinterface:4developers:
-SCHEDULED: <2016-04-14 Thu>
+** DONE Zen Of Refactoring                               :guest:refactoring:
+CLOSED: [2016-04-16 Sat 22:22] SCHEDULED: <2016-04-16 Sat>
 :PROPERTIES:
-:EXPORT_JEKYLL_LAYOUT: post-no-feature
-:filename: 2016-04-14-multi-platform-paradigm-programming
+:EXPORT_JEKYLL_LAYOUT: post
+:filename: 2015-10-20-zen-of-refactoring
+:banner_image: 
+:END:
+I wrote an article for Schibsted.pl's blog:
+These days microservices are all at rage. Everyone writes “small reusable components”. This is why proper refactoring techniques are still as relevant today as they were couple of years ago.
+[[http://www.schibsted.pl/2015/10/zen-of-refactoring/][Read more...]]
+** DONE Play Slick with Oracle                          :scala:slick:oracle:
+CLOSED: [2016-04-16 Sat 22:23] SCHEDULED: <2016-04-16 Sat>
+:PROPERTIES:
+:EXPORT_JEKYLL_LAYOUT: post
+:filename: 2014-10-26-play-slick-with-oracle
+:banner_image: 
+:END:
+Working with Oracle database never is a pleasure. Right on from the environment setup till the very first CRUD operations. Yet often times we're forced to do so. As I haven't found one, here's a quick guide on how to integrate Oracle into Play/Slick app.
+*** Dependencies
+Oracle is supported via a closed-source slick-extensions plugin from Typesafe that wraps JDBC driver. Pull it into your build by adding slick-extensions library and appropriate version of play-slick module to your build:
+#+BEGIN_SRC scala
+libraryDependencies ++= "com.typesafe.slick" %% "slick-extensions" % "2.0.0" ::
+                        "com.typesafe.play" %% "play-slick" % "0.8.0" ::
+                        Nil
+#+END_SRC
+*** Configuration
+In Play application.conf file set your database connection settings to (whereas default is db name):
+#+BEGIN_SRC scala
+db.default.slickdriver=com.typesafe.slick.driver.oracle.OracleDriver  
+db.default.driver=oracle.jdbc.OracleDriver  
+db.default.url="jdbc:oracle:thin:@host:1521:sid"  
+db.default.user=username  
+db.default.password="password"  
+#+END_SRC
+*** Usage
+In your model classes =import com.typesafe.slick.driver.oracle.OracleDriver.simple._= and you’re good to go.
+*** Known Issues
+A known issue with Oracle database is that whenever passing an empty value or nothing with an AutoInc index the db complains. To solve the issue you must provide the value which effectively means no AutoInc at all. Thus, I employed a simple solution of creating a spin-off data object without the id (and in most cases it is also my domain object as I usually don’t need ids) and then map it into the DB-compatible one. For the last task you might use a type class (I would not recommend using implicit conversion).
+** DONE Change: The Service Oriented Reality :java:architecture:microservices:
+CLOSED: [2016-04-16 Sat 23:25] SCHEDULED: <2016-04-16 Sat>
+:PROPERTIES:
+:EXPORT_JEKYLL_LAYOUT:
+:filename: 2012-10-16-change-the-service-oriented-reality
+:END:
+Change, impact, effect, reaction. As similar as they might seem some of the concepts revolving around the software change are in fact orthogonal. The change that drives the business software evolution is twofold. It takes both business and technical change. Both the impact of a feature as well as it's maintenance. That is why seemingly orthogonal concepts fit together so well.
+*TL;DR* The article describes the introduction of a pragmatic mini-service architecture. Hints on a distributed software development workflow automation.
+*** Spike
+Developing an effective, changeable software takes understanding of the nature of change in the context it will be running. Think Five Ws to be answered when the change occurs. The observation of how it worked in a banking company helped us deliver them an overhauled change-oriented architecture.
+The thing about the banking industry is that it fits so well into the domain modeling. The core, supporting and non-domains are easily identified with only a few cross-cutting concerns. It makes it incredibly easy to grow an enterprise system full of pet features, generic solutions and resistant to change.
+With a clear goal in mind and only a bit of domain identification, an observation was made that the real need was a limited subset of the core domain services. All the other are unique usecase services.
+**** The Mini Services
+Being pragmatists we wanted to facilitate people’s knowledge of the domain where it was crucial. Yet had to avoid too much modeling for the rest. We expected simple and pluggable APIs that encapsulated an independent part of a domain. All that in an application small enough one can really "fit in his head". At the time we came up with the idea of something, for the lack of a better name, I call ‘mini services’. Something in-between the webserver stack and the micro services. The concept of modularization is certainly not a new one. The growing micro-service architectures are just a variation of the [[http://en.wikipedia.org/wiki/Component-based_software_engineering][Component-based development]] (CBD). The micro-services implementation of the CBD assumes full decoupling on both deployment as well as interfacing level. Unlike micro-services we kept our services in a web cluster for sake of keeping the mental model and the familiar tools - see Rich Hickey’s [[http://www.infoq.com/presentations/Simple-Made-Easy][talk]]. Still, the deployments are only a couple of classes in size. With that said, having an entry point for what we expected to become domains and treating all the rest as non-domains, the solution seemed rather obvious… Mini services: Core Services, Frontend Services, Unique Services
+**** Core Services
+The core services are fundamentally the core domains split into finer-grained, goal-oriented artifacts. The company provides slightly different business capabilities to its branches in several countries. Having a single services a business concept with several backend representations and minor differences just doesn’t cut it anymore. For such cases we needed a single message consuming API that would be able to deliver proper implementation depending on the contents. A great example of a core service is customer-relationship management API. Each country needs a different holiday of calendar, different data source and representation. Yet aside from data issues the logic stays the same. A simple [[http://www.eaipatterns.com/ContentBasedRouter.html][content-based routing]] to even deeper service modules solves the problem. And simplifies the deployment.
+**** Frontend Services
+Unless being internal backend services (ie. customer classification services) providing logic to other core services, the core services rarely exist without frontend services. The latter are basically WebAPIs for third parties to interact with the core business concept. They do not contain logic, yet expose just enough core APIs that is needed.
+Front-end services usually provide third parties with REST or SOAP (ekhm, yes, in 2014) APIs. The drawback of the frontend services is that they cause hidden coupling on deployment level. However the issue is to be simply resolved with event sourcing and message passing.
+**** Unique Services
+This is probably the most straight-forward part of the platform. These are delivered for a single stakeholder, single usecase and single business problem. With the unique services we can have a full stack of non-shared codebase, data model and interface in a single bundle. Thus, the granularity and simplicity of delivering such services enables us to rewrite a service in a matter of hours. And yes, we did that several times with no harm done.
+*** Stabilisation
+Few first services were mostly supersimple CRUD data management apps. With just enough thinking to deliver the impacts and fix some of the obvious issues that previously blew up in our faces. At the time we knew we had to
+#+BEGIN_QUOTE
+Make things obvious. Break stuff. Ask for feedback.
+#+END_QUOTE
+After a few deliveries it becomes obvious where the issues are, where’s duplication and what needs to be taken care of. Unless you’re waterfall/water-scrum-fall The feedback loop should be short enough for you to be fully aware of those in a single release.
+Now, this is where you roll up your sleeves and make it easy to do good things and hard to do bad, get rid of duplication, make things repeatable, understandable and stable.
+**** Libraries
+We identified that our code either lacked or solved some of the things in a different manner.
+***** Logging
+Logging, oh sweet, logging. I have never fully understood why people spend hours discussing logging. And above all logging frameworks. And as people tend to be so religious about it and approach… let’s take it away from them. And here’s where we wrapped logging in several annotations, fluent API and released so everyone can be angry about not using their favourite logging framework anymore.
+After having it for some time it is merely a common idiom even newbies will get. And speaking in idioms is a dream come true.
+Except… unless you’re doing this on purpose, for commoditisation of the technology and expressing idioms, don’t.
+Here’s a sample of what we wanted to achieve - standard log format and standard way to log:
+#+BEGIN_SRC java
+@Log(level=Level.INFO)
+public Foo bar(Baz baz){ 
+    ...
+}
+#+END_SRC
+To use the other, more customizable API, you simply make:
+#+BEGIN_SRC java
+public Foo bar(Baz baz){ 
+    log.info().message("message {} {}",1,"123");  //logs  INFO   - requestId    | callerId  | userId    |message 1 123
+    log.error().requestId("123").message("error"); //logs ERROR - requestId     | callerId  | userId    |error
+}
+#+END_SRC
+And still get the standard Ops-friendly format.
+***** Safety
+At the stabilization time we knew that for future’s sake we’ll need to apply way more sanity checks than we initially put. This is where the safety was born. A library that implements Michael Nygard’s [[http://www.amazon.com/Release-It-Production-Ready-Pragmatic-Programmers/dp/0978739213][Release it!]] concepts. And boy, you’ll need one of those as your number of production services and interactions grows. Hopefully Netflix shared a great safety library [[https://github.com/Netflix/Hystrix][Hystrix]].
+Example of safety is a circuit breaker pattern annotation. Each integration point is guarded by a circuit breaker that is triggered after a defined number of exceptions and locked for predefined time:
+#+BEGIN_SRC java
+@GuardedByCircuitBreaker(exceptionsThreshold=5,retryTimeout=3000) 
+public Foo bar(URL url){
+    ...
+}
+#+END_SRC
+***** Monitoring
+Monitoring in a heterogenous, distributed environment has a lot of challanges. As we decided to have the services running in a common webserver clusters, the technology the company was using for years, some of the tools have been already available - runtime profiling, request tracking, migration to name a few. However as metrics freaks we needed more. And again it had to be a common idiom. Declarative and transparent. Kind of like [[http://metrics.codahale.com/][Metrics]] by Coda Hale. Exactly - Metrics. We put some effort to integrate it with our idea of the metrics and monitoring, defined a common concept JSON-based status page holding all the information.
+To get a standard set of metrics we use for each service, you’d simply:
+#+BEGIN_SRC java
+@DefaultRequestMetrics(id = "Foo") 
+public Bar bar(
+    Foo parameters) {
+    ...
+}
+#+END_SRC
+Sample status page parsed by monitoring:
+#+BEGIN_SRC json
+{"version":"3.0.0","gauges":{"FooService.counterGauge":{"value":1},"FooService.heavyCounterGauge":{"value":1001}},"counters":{},"histograms":{},"meters":{},"timers":{}}
+#+END_SRC
+***** Template
+Before the idea of the service oriented middleware the company had been primarily a Java shop. They’ve been successfully using Maven for a couple of years, had internal repositories, mirrors, yada yada yada. Aside from all the [[http://kent.spillner.org/blog/work/2009/11/14/java-build-tools.html][baadddd]], [[http://tech.puredanger.com/2009/01/28/maven-adoption-curve/][bad]] vibes maven has, for the straight-forward cases and archetype system it felt the tool to use. The preparation of the uberverbose maven archetype w/ all the modularization we wanted took a bit, yet it was totally worth it. A template with just enough stubbed classes, structure, dependencies set up is a huge value. Just to it.
+*** Commoditise
+The last age of software delivery is commoditisation. The idea of the commoditistion as expressed by [[http://vimeo.com/43603453][Dan North]] is to further optimise the cost. After having a standard solution to common dilemmas, we had to make it simple to work with the code. That lead us to…
+**** The distributed development workflow
+For a banking company, having a comprehensive service portfolio eventually means hundreds of deployments. This is where the traditional development model fails. Tools fail. Eventually people fail as understanding vanishes. To minimize the impact of high granularity we came up with a simple, yet effective workflow that focuses developers on a single service rather than the full portfolio. This is probably the crown jewel of our platform and the single best reason why it’s all working fine to date.
+[]IMG!
+**** This is how we roll
+Whenever starting development of a new service you simply create a new Git repo and set it’s collaborators.
+Clone it, create a new service out of maven archetype. And at this moment it’s ready to be deployed with a single maven command via a dedicated plugin.
+We usually work locally, however at certain point of time you will need to share the service with it’s consumers. Thus to develop a real service you need to create a Jenkins build pipeline cloning a defined template: Jenkins build pipeline
+Jenkins’ builds are triggered by a webhook whenever a new commit is pushed. Develop builds trigger deployment to early dev environment, we used to call alpha.
+When ready to go into testing, you simply execute ‘start a new release’ in Jenkins. The job will branch develop and update versions in Maven poms. After that it builds the artifact that lands as a snapshot in a Nexus binary repository.
+Eventually upon request the CI deploys the artifact to an acceptance environment.
+At the time user testing is being made. At certain cases it’s also a good practice to mark certain builds as RC. This usually means that the business capabilities are delivered and the changes are ‘irrelevant’ from business perspective. Obviously each RC-builds are pushed into Nexus for integration purposes.
+After release decision is made the ‘release finish’ is executed. This means the release/X.X.X branch is merged into master and Nexus is fed with the release. 
+This also marks the moment the generated docs are published into a Service Profile page.
+After that the deployment to prelive environment is made. At the moment it would be a real good idea to have a prelive/live routing for subgroup release testing.
+***** Git
+Git was not used at the company before we introduced the approach. However for our purposes [[http://nvie.com/posts/a-successful-git-branching-model/][Gitflow]] was a match made in heaven. The way it played with the environment of change felt just right. We needed a well-defined flow that would fit company’s release cycle compatible approach. We knew Git well enough to share the knowledge with the company’s employees. Currently each service has it’s own repository. Each repository has it’s collaborators. People outside of the collaborators group are always welcome to fork and pull-request the repository. Now that the components are so simple, peer reviews may be done by forking a repository and submitting a pull request.
+***** Wiki
+The great thing about having an [[https://bitbucket.org/atlassian/maven-jgitflow-plugin][automated]] gitflow is that the CI is capable of pushing the latest, generated docs into company’s Confluence. The Confluence contains service profiles describing service metadata (metrics, thresholds), APIs, third party interactions. All the data is generated and pushed into the wiki by Jenkins. Most of the time we simply use an annotation processor for metrics, reaction thresholds etc. APIs however are being documented with [[http://swagger.wordnik.com/][Swagger]]-compatible Enunciate maven plugin. The template usually contains API methods w/ Javadocs, latest API/client maven dependency at times containing samples.
+Of course you could say that all the data is either way available through repository or it’s web front. However there are several client systems and service consumers that look for summary about service portfolio and services’ capabilities. And for DRY purposes we never edit the description manually.
+***** Monitoring
+A [[http://www.nagios.org/][monitoring]] [[http://www.zabbix.com/][tool]] is being used as an active status pages consumer. It reads JSON pages and pushes notifications according to thresholds set in the service profiles. It is also fed with external data.
+One particular thing that we should have had implemented is the ‘phone home’ pattern. The pattern assumes that each service should actively ping back the ‘mothership’ monitoring tool with a heartbeat. The failure discovery approach along the status pages would have provided enough information on application status. Both Nagios and Zabbix provide a comprehensive APIs for implementing such integration.
+Previously I have also mentioned the classic solutions that had existed in the company and needed only a limited effort to get them working for the distributed approach. Each incoming request was marked with an ID that is stored in request header. The ID may be then traced through each service and network component it passes.
+***** Error Catcher
+Having a centralized error catcher ([[https://getsentry.com/][Sentry]] in this case) enables distributed applications to proactively push each exception to a single WebAPI. The catcher acts as a central storage and dispatcher for issues among applications. As it matches and aggregates exceptions, notifications are distributed according to defined thresholds until fixed (or marked false positive).
+*** Is it the way to go?
+The change context defined the development flow and the architecture. That was arguably the approach to choose when considering service orientation, component-based development and distributed architectures.
+Thus it is extremely important to make the right trade offs. For that as an engineer you should follow what Tim Harford calls the [[http://www.amazon.com/Adapt-Success-Always-Starts-Failure/dp/1250007550][Palchinsky Principles]]:
+#+BEGIN_QUOTE
+First: seek out new ideas and try new things
+Second: when trying something new, do it on a scale that is survivable
+Third: seek out feedback and learn from your mistakes as you go along
+#+END_QUOTE
+Do a few of both core and unique services. Prepare a walking skeleton. Wait till it breaks. Fix it. Do not commit before you measure. Have options. In the exploration you certainly should bite the bullet and do enough experiment to know what seems right for you and what trade offs you will make.
+From the current perspective the only thing I might argue is whether the decision of having services in a single runtime environment was the right tradeoff. It does not overly simplify the deployment nor provides any breakthrough features. On the contrary it does make cross-bundle interaction possible. However the time for the company’s developers to pick up the idea, using the familiar tools is now extremely low.
+We are now running dozens of services everyone in the development team should be able to fit into their head. The most of the problems are being solved by the outermost line of support. The delivery time is close enough to what we wanted.
+* Talks
+** DONE Multi{ Platform, Paradigm} Programming :talks:elixir:scala:jinterface:4developers:
+CLOSED: [2016-04-16 Sat 22:26] SCHEDULED: <2016-04-16 Sat>
+:PROPERTIES:
+:EXPORT_JEKYLL_LAYOUT: post
+:JEKYLL_CATEGORY: talks
+:filename: 2016-01-01-multi-platform-paradigm-programming
 :END:
 Polyglot, multi-paradigm environments become the bread and butter of every developer's work. 
 With the drive towards microservices and reactive software developers start to look into Erlang/OTP platform more often. 
@@ -72,7 +311,12 @@ available at [[http://github.com/peel/multi.git][peel/multi]]
 available at [[https://speakerdeck.com/peel/multi-platform-paradigm-programming][Speakerdeck]]
 *** Given at
 **** 4Developers,  11/04/16,  Warsaw, PL
-** TODO De⎇ it! The Error Handling Techniques :talks:scala:elixir:4developers:
+** DONE De⎇ it! The Error Handling Techniques :talks:scala:elixir:4developers:
+CLOSED: [2016-04-16 Sat 22:26] SCHEDULED: <2016-04-16 Sat>
+:PROPERTIES:
+:EXPORT_JEKYLL_LAYOUT: post
+:filename: 2015-01-01-de-it-the-error-handling-techniques
+:END:
 Usually errors in imperative languages are handled by try-catch block or checking that each operation (function) returned as expected.
 This causes a lot of defensive coding with if-wrapping of code blocks. With more functional approach it is way easier to do so...
 The talk introduces two models of error handling: Erlang-inspired let it crash and foldable, Either-type and Kleisli composition related approach.
@@ -86,7 +330,12 @@ available at [[http://github.com/peel/multi.git][peel/derailit]]
 available at [[https://speakerdeck.com/peel/derail-it-error-handling-techniques][Speakerdeck]]
 *** Given at
 **** 4Developers,  11/04/16,  Warsaw, PL
-** TODO C-4: BEAM the JVM                        :talks:erlang:scala:elixir:
+** DONE C-4: BEAM the JVM                        :talks:erlang:scala:elixir:
+CLOSED: [2016-04-16 Sat 22:26] SCHEDULED: <2016-04-16 Sat>
+:PROPERTIES:
+:EXPORT_JEKYLL_LAYOUT: post
+:filename: 2016-01-01-c-4-beam-the-jvm
+:END:
 The drive towards microservices and reactive software uncovers patterns that have been identified and implemented for years.
 Erlang is seen as a corner stone of distributed, actor-based concurrent programming. Much work has been done to implement Erlang's philosophy for the JVM.
 Yet is it even remotely possible to have a full coverage of the battle-tested Erlang platform running on Java Virtual Machine?
@@ -98,7 +347,12 @@ Starting off with the very basis of concurrency-free platform focused solely on 
 The talk will compare JVM languages' object-oriented legacy with Elixir's purely functional approach.
 For memory model and garbage collection we will analyse differences between JVM's common heap and BEAM's per-proceess heap and GC.
 Hopefully it will give a basic understanding of Erlang programming platfrom and impact the way of thinking about it's fundamental 'let it crash' (therfore C4) principles.
-** TODO Forgetting Java: Why Java Should Die in Flames and Take it's Developers Along :talks:java:scala:ruby:elixir:jdd:
+** DONE Forgetting Java: Why Java Should Die in Flames and Take it's Developers Along :talks:java:scala:ruby:elixir:jdd:
+CLOSED: [2016-04-16 Sat 22:27] SCHEDULED: <2016-04-16 Sat>
+:PROPERTIES:
+:EXPORT_JEKYLL_LAYOUT: post
+:filename: 2015-01-01-forgetting-java-why-java-should-die-in-flames-and-take-it-s-developers-along
+:END:
 Java is old. Java is verbose. Java is ugly. Java is mocked and ridiculed by everyone and their dog.
 Hell, Java is dead. Well it's not but I'm preaching to the choir. Or am I? 
 However convenient to say so, it's not exclusively Oracle to blame for Java's current state of the art. 
@@ -114,17 +368,32 @@ available at [[https://www.youtube.com/watch?v=LOcLwnV4Z2k][YouTube]]
 available at [[https://speakerdeck.com/peel/forgetting-java-why-java-should-die-in-flames-and-take-its-developers-along][Speakerdeck]]
 *** Given at
 **** JDD, 03/10/15,  Cracow, PL
-** TODO M-Words for the Rest of Us     :talks:scala:javascript:lambdalounge:
+** DONE M-Words for the Rest of Us     :talks:scala:javascript:lambdalounge:
+CLOSED: [2016-04-16 Sat 22:27] SCHEDULED: <2016-04-16 Sat>
+:PROPERTIES:
+:EXPORT_JEKYLL_LAYOUT: post
+:filename: 2015-01-01-m-words-for-the-rest-of-us
+:END:
 Monoids, functors, monads, categories and morphisms. Functional programmers often use their magick spells.
 Do we need to care? Is it elitism or a real thing? Functional programming matters and it needs to be in everyones programming toolkit.
 The talk introduces practical side of category theory and abstract algebra. From imperative to functional code in a small refactoring steps.
 *** Repository & slides
 available at [[http://github.com/peel/ll-monads][peel/ll-monads]]
-** TODO Guava: The New java.common                     :talks:java:internal:
+** DONE Guava: The New java.common                     :talks:java:internal:
+CLOSED: [2016-04-16 Sat 22:28] SCHEDULED: <2016-04-16 Sat>
+:PROPERTIES:
+:EXPORT_JEKYLL_LAYOUT: post
+:filename: 2014-01-01-guava-the-new-java-common
+:END:
 While refactoring and reviewing another team's code I was overwhelmed by the range 
 of different solutions to same problems, 'clever' hacks.
 The intention of the talk was to show off how Guava simplifies writing Java code.
-** TODO Zen of Refactoring                                  :talks:java:jug:
+** DONE Zen of Refactoring                                  :talks:java:jug:
+CLOSED: [2016-04-16 Sat 22:28] SCHEDULED: <2016-04-16 Sat>
+:PROPERTIES:
+:EXPORT_JEKYLL_LAYOUT: post
+:filename: 2015-10-20-zen-of-refactoring
+:END:
 Software refactoring is hard. We need teachers, good practices, rules. We need peace, focus and ideas. 
 We need the Zen-like rules for keeping our minds in check.
 The talk maps the Zen practices onto software refactoring using the Red-Green-Refactor and Mikado Method.
@@ -132,15 +401,31 @@ The talk maps the Zen practices onto software refactoring using the Red-Green-Re
 available at [[https://speakerdeck.com/peel/zen-of-refactoring][Speakerdeck]]
 *** Given at
 **** TriCity JUG, 2014, Gdansk, PL
-** TODO SOLID Principles of OO                          :talks:oop:java:jug:
+** DONE SOLID Principles of OO                          :talks:oop:java:jug:
+CLOSED: [2016-04-16 Sat 22:28] SCHEDULED: <2016-04-16 Sat>
+:PROPERTIES:
+:EXPORT_JEKYLL_LAYOUT: post
+:filename: 2010-01-01-solid-principles-of-oo
+:END:
 A comprehensive summary of SOLID principles of OO. Kind of a rant. Talk I've made for JUG several years ago.
 *** Video
 available at [[https://www.youtube.com/watch?v=LOcLwnV4Z2k][YouTube]]
 *** Slides
 available at [[https://speakerdeck.com/peel/forgetting-java-why-java-should-die-in-flames-and-take-its-developers-along][Speakerdeck]]
-* TODO Home
-* TODO About
-Piotr is a señor code arsonist based in Gdansk, PL. 
+* DONE Home
+CLOSED: [2016-04-16 Sat 22:25]
+:PROPERTIES:
+:EXPORT_JEKYLL_LAYOUT: index
+:END:
+* DONE About
+CLOSED: [2016-04-16 Sat 22:25]
+:PROPERTIES:
+:EXPORT_JEKYLL_LAYOUT: page
+:FILENAME: about
+:COMMENTS: false
+:PERMALINK: /about/
+:END:
+Piotr is a señor code arsonist based in Gdansk, PL.
 He has been developing scalable web products since early 2000s with variety of languages (Java, Scala, Ruby, Javascript and Elixir).
-Focused on delivering value to products and constatly working on simplyfing things. 
+Focused on delivering value to products and constatly working on simplyfing things.
 Aside from that he is el modo evil brujito and a future hoverboard owner.
