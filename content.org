@@ -5,6 +5,8 @@
 #+OPTIONS: toc:nil num:nil
 #+SEQ_TODO: TODO READY DONE
 #+STARTUP: fninline overview
+#+STARTUP: indent
+#+STARTUP: hidestars
 
 * Articles
 ** TODO Wireless ARM cluster :raspberry:odroid:arm:cluster:docker:vagrant:ansible:
@@ -15,6 +17,7 @@
 **** Wiring
 *** Software
 **** Prereqs
+**** Additional software
 **** Provisioning
 *** Running
 ** DONE Automated ArchLinuxARM Install Guide :raspberry:odroid:arm:provisioning:docker:ansible:
@@ -291,6 +294,9 @@ From the current perspective the only thing I might argue is whether the decisio
 We are now running dozens of services everyone in the development team should be able to fit into their head. The most of the problems are being solved by the outermost line of support. The delivery time is close enough to what we wanted.
 * Talks
 ** TODO Emacs Lisp Development                                 :talks:emacs:
+** TODO 4Got10                                           :talks:linux:tools:
+A talk about forgotten =*nix= tools that are really helpful 
+Theme: [[http://www.imdb.com/title/tt4510398/?ref_=fn_al_tt_1][4Got10 - imdb]]
 ** TODO Infrastructure as a Supervision Tree            :talks:scala:erlang:
 ** DONE Multi{ Platform, Paradigm} Programming :talks:elixir:scala:jinterface:4developers:
 CLOSED: [2016-04-16 Sat 22:26] SCHEDULED: <2016-04-16 Sat>
@@ -419,6 +425,7 @@ CLOSED: [2016-04-16 Sat 22:25]
 :PROPERTIES:
 :EXPORT_JEKYLL_LAYOUT: index
 :END:
+#+INCLUDE "."
 * DONE About
 CLOSED: [2016-04-16 Sat 22:25]
 :PROPERTIES:
