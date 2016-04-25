@@ -304,6 +304,7 @@ We are now running dozens of services everyone in the development team should be
 ** TODO 4Got10                                           :talks:linux:tools:
 A talk about forgotten =*nix= tools that are really helpful 
 Theme: [[http://www.imdb.com/title/tt4510398/?ref_=fn_al_tt_1][4Got10 - imdb]]
+Content: =coreutils= obviously, =make= (possibly =autotools=), =m4=, =tmux=, =sed=, =awk=, =aspell=
 ** TODO Infrastructure as a Supervision Tree            :talks:scala:erlang:
 ** DONE Multi{ Platform, Paradigm } Programming :talks:elixir:scala:jinterface:4developers:
 CLOSED: [2016-04-25 Mon 10:12] SCHEDULED: <2016-04-16 Sat>
