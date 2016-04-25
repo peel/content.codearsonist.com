@@ -9,6 +9,13 @@
 #+STARTUP: hidestars
 
 * Articles
+** TODO Elixir for Scala developers                           :elixir:scala:
+*** Intro
+*** Why should you care?
+*** Dynamic typing and typespecs 
+*** Macros and metaprogramming
+*** Scalaz
+** TODO Distributed Erlang with ARM cluster :raspberry:distributed:erlang:scala:
 ** TODO Wireless ARM cluster :raspberry:odroid:arm:cluster:docker:vagrant:ansible:
 *** Idea
 *** Hardware
@@ -298,8 +305,8 @@ We are now running dozens of services everyone in the development team should be
 A talk about forgotten =*nix= tools that are really helpful 
 Theme: [[http://www.imdb.com/title/tt4510398/?ref_=fn_al_tt_1][4Got10 - imdb]]
 ** TODO Infrastructure as a Supervision Tree            :talks:scala:erlang:
-** TODO Multi{ Platform, Paradigm } Programming :talks:elixir:scala:jinterface:4developers:
-SCHEDULED: <2016-04-16 Sat>
+** DONE Multi{ Platform, Paradigm } Programming :talks:elixir:scala:jinterface:4developers:
+CLOSED: [2016-04-25 Mon 10:12] SCHEDULED: <2016-04-16 Sat>
 :PROPERTIES:
 :EXPORT_JEKYLL_LAYOUT: post
 :JEKYLL_CATEGORY: talks
