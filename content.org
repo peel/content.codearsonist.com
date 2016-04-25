@@ -298,8 +298,8 @@ We are now running dozens of services everyone in the development team should be
 A talk about forgotten =*nix= tools that are really helpful 
 Theme: [[http://www.imdb.com/title/tt4510398/?ref_=fn_al_tt_1][4Got10 - imdb]]
 ** TODO Infrastructure as a Supervision Tree            :talks:scala:erlang:
-** DONE Multi{ Platform, Paradigm} Programming :talks:elixir:scala:jinterface:4developers:
-CLOSED: [2016-04-16 Sat 22:26] SCHEDULED: <2016-04-16 Sat>
+** TODO Multi{ Platform, Paradigm } Programming :talks:elixir:scala:jinterface:4developers:
+SCHEDULED: <2016-04-16 Sat>
 :PROPERTIES:
 :EXPORT_JEKYLL_LAYOUT: post
 :JEKYLL_CATEGORY: talks
