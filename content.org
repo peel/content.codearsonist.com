@@ -304,7 +304,7 @@ We are now running dozens of services everyone in the development team should be
 ** TODO 4Got10                                           :talks:linux:tools:
 A talk about forgotten =*nix= tools that are really helpful 
 Theme: [[http://www.imdb.com/title/tt4510398/?ref_=fn_al_tt_1][4Got10 - imdb]]
-Content: =coreutils= obviously, =make= (possibly =autotools=), =m4=, =tmux=, =sed=, =awk=, =aspell=
+Content: =coreutils= obviously, =make= (possibly =autotools=), =m4=, =tmux=, =sed=, =awk=, =aspell=, =ranger=
 ** TODO Infrastructure as a Supervision Tree            :talks:scala:erlang:
 ** DONE Multi{ Platform, Paradigm } Programming :talks:elixir:scala:jinterface:4developers:
 CLOSED: [2016-04-25 Mon 10:12] SCHEDULED: <2016-04-16 Sat>
@@ -346,6 +346,7 @@ available at [[http://github.com/peel/multi.git][peel/derailit]]
 available at [[https://speakerdeck.com/peel/derail-it-error-handling-techniques][Speakerdeck]]
 *** Given at
 **** 4Developers,  11/04/16,  Warsaw, PL
+**** DEVOXX,  23/06/16,  Cracow, PL
 ** DONE C-4: BEAM the JVM                        :talks:erlang:scala:elixir:
 CLOSED: [2016-04-16 Sat 22:26] SCHEDULED: <2016-04-16 Sat>
 :PROPERTIES:
