@@ -9,7 +9,16 @@
 #+STARTUP: hidestars
 
 * Articles
-** READY Avoiding manual microservices management in development :scala:docker:
+** TODO Scala scratch in Emacs
+:PROPERTIES:
+:EXPORT_JEKYLL_LAYOUT: post
+:END:
+Recently I've been working way more with Scala than with Clojure, Elixir/Erlang. 
+CIDER or Alchemist got me accustomed to convenient eval-in-place or eval region.
+I've been longing for that feature to work with my Scala code.
+I've been using sbt-mode form time to time to interact with the +horror+ build tool
+** DONE Avoiding manual microservices management in development :scala:docker:
+CLOSED: [2017-01-17 Tue 13:27] SCHEDULED: <2017-01-17 Tue>
 :PROPERTIES:
 :EXPORT_JEKYLL_LAYOUT: post
 :filename: 2017-01-17-avoid-manual-management
@@ -31,7 +40,8 @@ Here's a sample task that does what's described above:
 .PHONY: run $(R)
 run: $(R)
 $(R):
-		@docker-compose up -d $(shell dcdeps $(@))
+		@docker-compose kill $(@) || true
+		@docker-compose up -d $(filter-out $(R),$(shell dcdeps $(@)))
 		@sbt "project $(@)" "~re-start --- -Dconfig.resource=dev.conf"
 #+END_SRC
 The task simply issues docker-compose and sbt commands for any given project, therfore you can run it as follows:
@@ -41,7 +51,8 @@ make -j2 run R="first-service second-service"
 Which will execute the command for both first-service and second-service in two separate threads allowing the whole thing to work independently.
 That's why the whole ~.PHONY~ magic is being used rather than simple variables.
 I'm also using a simple utility I have put together in a couple of minutes - [[http://github.com/peel/dcdeps][dcdeps]] (as in: docker-compose dependencies).
-The utility simply looks into given compose.yml and prints dependencies for given service, hance docker-compose uses that for running all the listed services in the background.
+The utility simply looks into given compose.yml and prints dependencies for given service, hance docker-compose uses that for running all the listed services in the background
+with filtering out the services that are about to be ran.
 The thing is though, that the approach enables you to simply change the tags of containers and run mocks ([[http://stoplight.io/platform/prism/][prism]], [[https://jsonplaceholder.typicode.com/][json-placeholder]], [[http://wiremock.org/][wiremock]] anyone?) instead of the real thing.
 ** TODO Elixir for Scala developers                           :elixir:scala:
 *** Intro
